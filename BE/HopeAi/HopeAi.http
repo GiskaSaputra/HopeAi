@@ -1,0 +1,6 @@
+@HopeAi_HostAddress = http://localhost:5071
+
+GET {{HopeAi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
