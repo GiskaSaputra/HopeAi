@@ -10,73 +10,86 @@ namespace HopeAi;
 
 public struct ModelAi
 {
-    public string nameModel {get;set;}
+    public string nameModel { get; set; }
 }
 
 
 public class GeminiService : IGeminiService
 {
 
-    public bool IsConnected {get;set;}
+    public bool IsConnected { get; set; }
 
-    readonly IConfiguration configuration; 
+    readonly IConfiguration configuration;
 
 
     readonly string APIKEY;
 
-    private GenerateContentRequest _content; 
+    private string _model;
 
 
     private GeminiClient client;
 
-    public GeminiService(IConfiguration _config , GeminiClientOptions _options)
+    private List<Content> _history = new();
+
+    public GeminiService(IConfiguration _config, GeminiClientOptions _options)
     {
         configuration = _config;
         APIKEY = _config.GetSection("APIKEY").Value!;
-
-
+        Console.Write(APIKEY);
         client = new GeminiClient(_options);
     }
 
-    public async Task SetMessage(ModelAi model , string message)
+    public async Task SetMessage(ModelAi model, string message)
     {
-        var content = new GenerateContentRequest
-        {
-            Model = model.nameModel,
-            Contents = new List<Content>
+        _model = model.nameModel;
+
+        _history.Add(
+            new Content
             {
-                new Content
+                Role = "user",
+                Parts = new List<Part>
                 {
-                    Role = "user",
-                    Parts = new List<Part>
+                    new Part
                     {
-                        new Part
-                        {
-                            Text = message
-                        }
+                        Text = @"Nama mu adalah Neotutor , Kamu adalah tutor belajar yang sangat ramah, sabar, dan komunikatif.
+                        Jawablah dengan:
+                        - Bahasa sederhana
+                        - Kalimat pendek
+                        - Contoh konkret bila perlu
+                        - Tidak bertele-tele
+                        - Berorientasi pada pemahaman pelajar
+                        - Jelaskan konsep dengan cara paling mudah dipahami
+                        - Usahakan ala Gen z supaya pembicaraan tidak terlalu kaku
+
+                        Jika pertanyaan terlalu luas, jelaskan dengan ringkas dan beri langkah-langkah. " + message
                     }
                 }
             }
-        };
-    
-        this._content = content;
+        );
 
     }
 
     public async Task<string> GetResponse()
     {
+        var content = new GenerateContentRequest
+        {
+            Model = _model,
+            Contents = _history
+        };
+
         try
         {
-            var response = await client.V1.Models.GenerateContentAsync(this._content.Model, _content);
+            var response = await client.V1.Models.GenerateContentAsync(_model, content);
             return response.Candidates![0].Content!.Parts![0].Text!;
-            
-        }catch (Exception e)
+
+        }
+        catch (Exception e)
         {
             return e.Message;
         }
 
     }
 
-    
+
 
 }

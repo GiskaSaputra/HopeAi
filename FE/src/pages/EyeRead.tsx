@@ -17,12 +17,14 @@ declare global {
 export default function EyeRead() {
   const [isScanning, setIsScanning] = useState(false);
   const [scannedText, setScannedText] = useState("");
-  const [activeOutput, setActiveOutput] = useState<"audio" | "text" | "summary">("text");
+  const [activeOutput, setActiveOutput] = useState<
+    "audio" | "text" | "summary"
+  >("text");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isTesseractLoaded, setIsTesseractLoaded] = useState(false);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -30,14 +32,16 @@ export default function EyeRead() {
 
   // Load Tesseract script dynamically
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    const script = document.createElement("script");
+    script.src =
+      "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
     script.async = true;
     script.onload = () => setIsTesseractLoaded(true);
     script.onerror = () => {
       toast({
         title: "Gagal Memuat OCR",
-        description: "Gagal memuat pustaka pengenalan teks. Silakan refresh halaman.",
+        description:
+          "Gagal memuat pustaka pengenalan teks. Silakan refresh halaman.",
         variant: "destructive",
       });
     };
@@ -52,33 +56,35 @@ export default function EyeRead() {
   useEffect(() => {
     if (isScanning && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
-      videoRef.current.play().catch(err => console.error("Error playing video:", err));
+      videoRef.current
+        .play()
+        .catch((err) => console.error("Error playing video:", err));
     }
   }, [isScanning]);
 
   const startCamera = async () => {
     // Reset image jika ada, agar tampilan beralih ke video
     setCapturedImage(null);
-    
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: "environment", 
-          width: { ideal: 1280 }, 
-          height: { ideal: 720 } 
-        }
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
       });
-      
+
       streamRef.current = stream;
       // Set state ini akan memicu re-render dan menampilkan elemen <video>
       // useEffect di atas kemudian akan menangani pemasangan srcObject
       setIsScanning(true);
-      
     } catch (error) {
       console.error(error);
       toast({
         title: "Kesalahan Kamera",
-        description: "Tidak dapat mengakses kamera. Pastikan izin kamera diberikan.",
+        description:
+          "Tidak dapat mengakses kamera. Pastikan izin kamera diberikan.",
         variant: "destructive",
       });
     }
@@ -86,7 +92,7 @@ export default function EyeRead() {
 
   const stopCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     if (videoRef.current) {
@@ -96,47 +102,51 @@ export default function EyeRead() {
   };
 
   const processImage = async (imageSource: string) => {
-    if (!isTesseractLoaded || !window.Tesseract) {
-      toast({
-        title: "Sistem Belum Siap",
-        description: "Sedang memuat sistem OCR, silakan coba sesaat lagi.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsProcessing(true);
     setCapturedImage(imageSource);
-    // Matikan kamera saat memproses gambar
     stopCamera();
-    
+
     toast({
       title: "Memindai...",
-      description: "Memproses gambar dengan OCR",
+      description: "Mengirim gambar ke server untuk OCR",
     });
 
     try {
-      const { data: { text } } = await window.Tesseract.recognize(
-        imageSource,
-        'ind+eng',
-        {
-          logger: (m: any) => console.log(m)
-        }
-      );
-      
-      setScannedText(text);
+      // Convert base64 → Blob
+      const res = await fetch(imageSource);
+      const blob = await res.blob();
+
+      // Siapkan FormData untuk IFormFile
+      const form = new FormData();
+      form.append("image", blob, "capture.png");
+
+      // HIT API BACKEND
+      const response = await fetch("http://localhost:5194/scan/ocr", {
+        method: "POST",
+        body: form,
+      });
+
+      if (!response.ok) {
+        throw new Error("OCR gagal: " + response.statusText);
+      }
+
+      const ocrText = await response.text();
+      setScannedText(ocrText);
+
       setIsProcessing(false);
       setActiveOutput("text");
+
       toast({
         title: "Berhasil!",
-        description: "Teks berhasil diekstrak",
+        description: "Teks berhasil diekstrak dari server",
       });
     } catch (error) {
-      setIsProcessing(false);
       console.error(error);
+      setIsProcessing(false);
+
       toast({
         title: "Pemindaian Gagal",
-        description: "Tidak dapat mengekstrak teks dari gambar",
+        description: "Server gagal memproses OCR",
         variant: "destructive",
       });
     }
@@ -148,20 +158,71 @@ export default function EyeRead() {
     const canvas = document.createElement("canvas");
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
+
     const ctx = canvas.getContext("2d");
-    
-    if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0);
-      const imageData = canvas.toDataURL('image/png');
-      await processImage(imageData);
+    if (!ctx) return;
+
+    ctx.drawImage(videoRef.current, 0, 0);
+
+    // BASE64 RESULT
+    const dataUrl = canvas.toDataURL("image/png");
+
+    // Simpan preview
+    setCapturedImage(dataUrl);
+    stopCamera();
+    setIsProcessing(true);
+
+    toast({
+      title: "Memindai...",
+      description: "Mengirim foto ke server untuk OCR",
+    });
+
+    try {
+      // KONVERSI BASE64 → BLOB
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+
+      // BUAT FORM DATA UNTUK IFormFile
+      const form = new FormData();
+      form.append("image", blob, "capture.png");
+
+      // CALL BACKEND
+      const response = await fetch("http://localhost:5071/scan/ocr", {
+        method: "POST",
+        body: form,
+      });
+
+      if (!response.ok) {
+        throw new Error("OCR gagal");
+      }
+
+      const text = await response.text();
+      setScannedText(text);
+
+      toast({
+        title: "Berhasil!",
+        description: "Teks berhasil diekstrak dari foto",
+      });
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Gagal",
+        description: "Tidak dapat memproses foto",
+        variant: "destructive",
+      });
     }
+
+    setIsProcessing(false);
+    setActiveOutput("text");
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       toast({
         title: "File Tidak Valid",
         description: "Silakan pilih file gambar",
@@ -170,13 +231,40 @@ export default function EyeRead() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const imageData = e.target?.result as string;
-      stopCamera();
-      await processImage(imageData);
-    };
-    reader.readAsDataURL(file);
+    setCapturedImage(URL.createObjectURL(file));
+    stopCamera();
+
+    setIsProcessing(true);
+    toast({
+      title: "Memindai...",
+      description: "Mengirim gambar ke server untuk OCR",
+    });
+
+    try {
+      const form = new FormData();
+      form.append("image", file, "capture.png");
+
+      const response = await fetch("http://localhost:5071/scan/ocr", {
+        method: "POST",
+        body: form,
+      });
+
+      const ocrText = await response.text();
+      setScannedText(ocrText);
+
+      toast({
+        title: "Berhasil!",
+        description: "Teks berhasil diekstrak",
+      });
+    } catch {
+      toast({
+        title: "Gagal",
+        description: "Server gagal memproses OCR",
+        variant: "destructive",
+      });
+    }
+
+    setIsProcessing(false);
   };
 
   const retakePhoto = () => {
@@ -186,10 +274,10 @@ export default function EyeRead() {
   };
 
   const speakText = (text: string) => {
-    if ('speechSynthesis' in window) {
+    if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'id-ID';
+      utterance.lang = "id-ID";
       utterance.rate = 0.9;
       utterance.pitch = 1;
       utterance.onstart = () => setIsSpeaking(true);
@@ -204,8 +292,9 @@ export default function EyeRead() {
   };
 
   const generateSummary = (text: string) => {
-    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-    const summary = sentences.slice(0, Math.min(3, sentences.length)).join(". ") + ".";
+    const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+    const summary =
+      sentences.slice(0, Math.min(3, sentences.length)).join(". ") + ".";
     return summary;
   };
 
@@ -217,9 +306,12 @@ export default function EyeRead() {
         className="max-w-6xl mx-auto"
       >
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">EyeRead</h1>
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+            EyeRead
+          </h1>
           <p className="text-muted-foreground text-lg">
-            Pindai buku, papan tulis, dan dokumen dengan teknologi OCR berbasis AI
+            Pindai buku, papan tulis, dan dokumen dengan teknologi OCR berbasis
+            AI
           </p>
         </div>
 
@@ -230,9 +322,9 @@ export default function EyeRead() {
             <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-4 relative flex items-center justify-center ring-1 ring-border">
               {capturedImage ? (
                 // TAMPILAN 1: Hasil Foto
-                <img 
-                  src={capturedImage} 
-                  alt="Captured" 
+                <img
+                  src={capturedImage}
+                  alt="Captured"
                   className="w-full h-full object-contain"
                 />
               ) : isScanning ? (
@@ -264,15 +356,19 @@ export default function EyeRead() {
                   <div className="p-6 rounded-full bg-muted-foreground/10">
                     <Camera className="w-12 h-12 text-muted-foreground" />
                   </div>
-                  <p className="text-sm text-muted-foreground">Kamera belum aktif</p>
+                  <p className="text-sm text-muted-foreground">
+                    Kamera belum aktif
+                  </p>
                 </div>
               )}
-              
+
               {isProcessing && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-sm font-medium animate-pulse">Memproses teks...</p>
+                    <p className="text-sm font-medium animate-pulse">
+                      Memproses teks...
+                    </p>
                   </div>
                 </div>
               )}
@@ -282,7 +378,11 @@ export default function EyeRead() {
             <div className="flex flex-col gap-3">
               {capturedImage ? (
                 <div className="flex gap-3">
-                  <Button onClick={retakePhoto} variant="outline" className="flex-1">
+                  <Button
+                    onClick={retakePhoto}
+                    variant="outline"
+                    className="flex-1"
+                  >
                     <Camera className="w-4 h-4 mr-2" />
                     Ambil Ulang
                   </Button>
@@ -294,9 +394,9 @@ export default function EyeRead() {
                       onChange={handleFileUpload}
                       className="hidden"
                     />
-                    <Button 
-                      onClick={() => fileInputRef.current?.click()} 
-                      variant="outline" 
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      variant="outline"
                       className="w-full"
                     >
                       <Upload className="w-4 h-4 mr-2" />
@@ -306,7 +406,12 @@ export default function EyeRead() {
                 </div>
               ) : !isScanning ? (
                 <>
-                  <Button onClick={startCamera} className="w-full bg-primary hover:bg-primary/90 transition-all" disabled={isProcessing} size="lg">
+                  <Button
+                    onClick={startCamera}
+                    className="w-full bg-primary hover:bg-primary/90 transition-all"
+                    disabled={isProcessing}
+                    size="lg"
+                  >
                     <Camera className="w-4 h-4 mr-2" />
                     Buka Kamera
                   </Button>
@@ -318,9 +423,9 @@ export default function EyeRead() {
                       onChange={handleFileUpload}
                       className="hidden"
                     />
-                    <Button 
-                      onClick={() => fileInputRef.current?.click()} 
-                      variant="outline" 
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      variant="outline"
                       className="w-full"
                       disabled={isProcessing}
                     >
@@ -331,10 +436,19 @@ export default function EyeRead() {
                 </>
               ) : (
                 <div className="flex gap-3">
-                  <Button onClick={captureAndScan} className="flex-1 bg-primary hover:bg-primary/90" disabled={isProcessing} size="lg">
+                  <Button
+                    onClick={captureAndScan}
+                    className="flex-1 bg-primary hover:bg-primary/90"
+                    disabled={isProcessing}
+                    size="lg"
+                  >
                     {isProcessing ? "Memproses..." : "Tangkap & Pindai"}
                   </Button>
-                  <Button onClick={stopCamera} variant="destructive" disabled={isProcessing}>
+                  <Button
+                    onClick={stopCamera}
+                    variant="destructive"
+                    disabled={isProcessing}
+                  >
                     Hentikan
                   </Button>
                 </div>
@@ -344,7 +458,11 @@ export default function EyeRead() {
 
           {/* Output Section */}
           <Card className="p-6 shadow-lg flex flex-col h-full">
-            <Tabs value={activeOutput} onValueChange={(v) => setActiveOutput(v as any)} className="h-full flex flex-col">
+            <Tabs
+              value={activeOutput}
+              onValueChange={(v) => setActiveOutput(v as any)}
+              className="h-full flex flex-col"
+            >
               <TabsList className="grid w-full grid-cols-3 mb-2">
                 <TabsTrigger value="text">
                   <Type className="w-4 h-4 mr-2" />
@@ -361,32 +479,65 @@ export default function EyeRead() {
               </TabsList>
 
               <div className="flex-1 bg-muted/50 rounded-lg p-4 overflow-hidden border border-border">
-                <TabsContent value="text" className="mt-0 h-full overflow-y-auto">
+                <TabsContent
+                  value="text"
+                  className="mt-0 h-full overflow-y-auto"
+                >
                   {scannedText ? (
                     <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <p className="text-lg leading-relaxed whitespace-pre-wrap">{scannedText}</p>
+                      <p className="text-lg leading-relaxed whitespace-pre-wrap">
+                        {scannedText}
+                      </p>
                     </div>
                   ) : (
                     <div className="h-full flex items-center justify-center text-muted-foreground text-center p-8">
-                      <p>Belum ada teks.<br/>Pindai dokumen atau unggah gambar untuk memulai.</p>
+                      <p>
+                        Belum ada teks.
+                        <br />
+                        Pindai dokumen atau unggah gambar untuk memulai.
+                      </p>
                     </div>
                   )}
                 </TabsContent>
 
-                <TabsContent value="audio" className="mt-0 h-full flex items-center justify-center">
+                <TabsContent
+                  value="audio"
+                  className="mt-0 h-full flex items-center justify-center"
+                >
                   <div className="text-center">
                     {scannedText ? (
                       <>
-                        <div className={`w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6 ${isSpeaking ? 'animate-pulse ring-4 ring-primary/20' : ''}`}>
-                          <Volume2 className={`w-12 h-12 ${isSpeaking ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <div
+                          className={`w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6 ${
+                            isSpeaking
+                              ? "animate-pulse ring-4 ring-primary/20"
+                              : ""
+                          }`}
+                        >
+                          <Volume2
+                            className={`w-12 h-12 ${
+                              isSpeaking
+                                ? "text-primary"
+                                : "text-muted-foreground"
+                            }`}
+                          />
                         </div>
                         <div className="space-y-4">
                           {!isSpeaking ? (
-                            <Button onClick={() => speakText(scannedText)} className="w-full min-w-[200px]" size="lg">
+                            <Button
+                              onClick={() => speakText(scannedText)}
+                              className="w-full min-w-[200px]"
+                              size="lg"
+                            >
                               Putar Audio
                             </Button>
                           ) : (
-                            <Button onClick={stopSpeaking} variant="secondary" className="w-full min-w-[200px]" size="lg">
+                            <Button
+                              onClick={stopSpeaking}
+                              variant="secondary"
+                              className="w-full min-w-[200px]"
+                              size="lg"
+                            >
                               Hentikan Audio
                             </Button>
                           )}
@@ -396,12 +547,17 @@ export default function EyeRead() {
                         </div>
                       </>
                     ) : (
-                      <p className="text-muted-foreground">Pindai teks terlebih dahulu untuk mengaktifkan audio</p>
+                      <p className="text-muted-foreground">
+                        Pindai teks terlebih dahulu untuk mengaktifkan audio
+                      </p>
                     )}
                   </div>
                 </TabsContent>
 
-                <TabsContent value="summary" className="mt-0 h-full overflow-y-auto">
+                <TabsContent
+                  value="summary"
+                  className="mt-0 h-full overflow-y-auto"
+                >
                   {scannedText ? (
                     <div className="space-y-4">
                       <h3 className="font-semibold text-lg flex items-center">
@@ -427,7 +583,9 @@ export default function EyeRead() {
 
         {/* Instructions */}
         <div className="mt-8 p-6 rounded-lg bg-card border border-border text-card-foreground shadow-sm">
-          <h3 className="font-semibold text-lg mb-4">Cara Menggunakan EyeRead:</h3>
+          <h3 className="font-semibold text-lg mb-4">
+            Cara Menggunakan EyeRead:
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
             <div className="p-3 bg-muted rounded-md">
               <span className="font-bold block mb-1">1. Mulai</span>

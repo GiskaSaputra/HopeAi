@@ -34,7 +34,11 @@ namespace MyApp.Namespace
 
             var cleanResponse = response.Replace('*' , ' ');
 
-            return Ok(cleanResponse);
+            return Ok(new
+            {
+                status = "success" ,
+                response = cleanResponse
+            });
         }
 
     }

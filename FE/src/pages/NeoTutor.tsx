@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
 
-
 type Message = {
   id: string;
   role: "user" | "assistant";
@@ -18,9 +17,11 @@ export default function NeoTutor() {
     {
       id: "1",
       role: "assistant",
-      content: "Halo! Saya NeoTutor, asisten belajar AI Anda. Tanyakan apa saja tentang pekerjaan rumah Anda, dan saya akan menjelaskannya dengan cara yang sederhana!"
+      content:
+        "Halo! Saya NeoTutor, asisten belajar AI Anda. Tanyakan apa saja tentang pekerjaan rumah Anda!"
     }
   ]);
+
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
@@ -31,6 +32,9 @@ export default function NeoTutor() {
     "Bagaimana cara menulis esai?",
   ];
 
+  // ========================================
+  // 🚀 CONNECT TO BACKEND GEMINI
+  // ========================================
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
 
@@ -44,24 +48,38 @@ export default function NeoTutor() {
     setInput("");
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const response = await fetch("http://localhost:5071/gemini/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ text }) // sesuai permintaan
+      });
+
+      const data = await response.json();
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `Pertanyaan yang bagus! Mari saya bantu Anda memahami "${text}". 
-
-Ini adalah kesempatan belajar! Berikut penjelasan sederhananya:
-
-1. Pertama, mari kita bagi konsepnya menjadi bagian-bagian yang lebih kecil
-2. Kita akan melihat beberapa contoh agar lebih jelas
-3. Kemudian kita bisa berlatih dengan beberapa soal
-
-Apakah Anda ingin saya menjelaskan bagian tertentu dengan lebih detail?`,
+        content: data.response || "Tidak ada respons dari server."
       };
+
       setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error(error);
+
+      setMessages(prev => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "Terjadi kesalahan saat menghubungi server."
+        },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -72,7 +90,9 @@ Apakah Anda ingin saya menjelaskan bagian tertentu dengan lebih detail?`,
         className="max-w-4xl mx-auto"
       >
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2 gradient-text">NeoTutor</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-2 gradient-text">
+            NeoTutor
+          </h1>
           <p className="text-muted-foreground text-base md:text-lg">
             Tutor AI pribadi Anda, tersedia 24/7 untuk membantu Anda belajar
           </p>
@@ -87,7 +107,7 @@ Apakah Anda ingin saya menjelaskan bagian tertentu dengan lebih detail?`,
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: index * 0.07 }}
                   className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {message.role === "assistant" && (
@@ -95,7 +115,7 @@ Apakah Anda ingin saya menjelaskan bagian tertentu dengan lebih detail?`,
                       <Bot className="w-5 h-5 text-white" />
                     </div>
                   )}
-                  
+
                   <div
                     className={`rounded-2xl px-4 py-3 max-w-[80%] ${
                       message.role === "user"
@@ -123,7 +143,7 @@ Apakah Anda ingin saya menjelaskan bagian tertentu dengan lebih detail?`,
                   </div>
                   <div className="bg-muted rounded-2xl px-4 py-3">
                     <div className="flex gap-1">
-                      <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <div className="w-2 h-2 rounded-full bg-primary animate-bounce" />
                       <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
                       <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
                     </div>

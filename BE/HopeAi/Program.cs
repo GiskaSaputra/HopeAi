@@ -9,7 +9,8 @@ builder.Services.AddSingleton(new GeminiClientOptions
     ApiKey = builder.Configuration["APIKEY"]!
 });
 
-builder.Services.AddScoped<IGeminiService , GeminiService>();
+builder.Services.AddSingleton<IGeminiService , GeminiService>();
+builder.Services.AddSingleton<IOcrService,OcrService>();
 
 builder.Services.AddControllers();
 

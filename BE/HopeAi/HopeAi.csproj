@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="GeminiDotnet" Version="0.17.2" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10" />
+    <PackageReference Include="NewtonSoft.Json" Version="13.0.4" />
   </ItemGroup>
 
 </Project>

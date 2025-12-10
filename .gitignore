@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+#ignore APIKEY 
+BE/HopeAi/appsettings.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
