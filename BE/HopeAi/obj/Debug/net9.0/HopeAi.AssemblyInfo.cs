@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HopeAi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4eed71bc20bd33b1b551832d36f67534ea88faa4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e6efcb3071e632a75696c3f5127c39fef2060081")]
 [assembly: System.Reflection.AssemblyProductAttribute("HopeAi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HopeAi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
