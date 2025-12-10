@@ -11,9 +11,10 @@ namespace MyApp.Namespace
     {
         readonly IGeminiService _client; 
 
-        public GeminiController(IGeminiService client)
+        public GeminiController(IGeminiService client , IConfiguration _config)
         {
             _client = client;
+            Console.WriteLine(_config.GetSection("APIKEY").Value!);
         }
 
         [HttpPost("chat")]
@@ -24,6 +25,8 @@ namespace MyApp.Namespace
                 nameModel = "gemini-2.5-flash"
             } ,
             message.text);
+
+
 
             string response = _client.GetResponse().Result;
 

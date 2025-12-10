@@ -31,12 +31,15 @@ public class GeminiService : IGeminiService
 
     private List<Content> _history = new();
 
-    public GeminiService(IConfiguration _config, GeminiClientOptions _options)
+    public GeminiService(IConfiguration _config)
     {
         configuration = _config;
         APIKEY = _config.GetSection("APIKEY").Value!;
         Console.Write(APIKEY);
-        client = new GeminiClient(_options);
+        client = new GeminiClient(new GeminiClientOptions
+        {
+            ApiKey = APIKEY
+        });
     }
 
     public async Task SetMessage(ModelAi model, string message)

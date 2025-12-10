@@ -4,13 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton(new GeminiClientOptions
-{
-    ApiKey = builder.Configuration.GetSection("APIKEY").Value!
-});
-
 builder.Services.AddSingleton<IGeminiService , GeminiService>();
-builder.Services.AddSingleton<IOcrService,OcrService>();
+builder.Services.AddScoped<IOcrService,OcrService>();
 
 builder.Services.AddControllers();
 
@@ -24,7 +19,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-Console.WriteLine(Environment.GetEnvironmentVariable("APIKEY"));
 
 var app = builder.Build();
 
