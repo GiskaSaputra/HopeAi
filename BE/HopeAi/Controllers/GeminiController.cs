@@ -32,7 +32,9 @@ namespace MyApp.Namespace
                 return StatusCode(400 , "Objek tidak ada");
             }
 
-            return Ok(response);
+            var cleanResponse = response.Replace('*' , ' ');
+
+            return Ok(cleanResponse);
         }
 
     }

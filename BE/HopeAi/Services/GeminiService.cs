@@ -65,8 +65,15 @@ public class GeminiService : IGeminiService
 
     public async Task<string> GetResponse()
     {
-        var response = await client.V1.Models.GenerateContentAsync(this._content.Model, _content);
-        return response.Candidates![0].Content!.Parts![0].Text!;
+        try
+        {
+            var response = await client.V1.Models.GenerateContentAsync(this._content.Model, _content);
+            return response.Candidates![0].Content!.Parts![0].Text!;
+            
+        }catch (Exception e)
+        {
+            return e.Message;
+        }
 
     }
 
