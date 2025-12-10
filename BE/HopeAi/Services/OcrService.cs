@@ -53,7 +53,7 @@ public class OcrService : IOcrService
                         Text = "Extract all readable text from this image. Return raw text only."
                         
                     },
-                    
+
                     new Part
                     {
                         InlineData = new Blob

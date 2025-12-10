@@ -35,3 +35,5 @@
 /home/bennedistus/Documents/PROJECT/HOPEAI/HopeAi/BE/HopeAi/bin/Debug/net9.0/GeminiDotnet.dll
 /home/bennedistus/Documents/PROJECT/HOPEAI/HopeAi/BE/HopeAi/bin/Debug/net9.0/System.Net.ServerSentEvents.dll
 /home/bennedistus/Documents/PROJECT/HOPEAI/HopeAi/BE/HopeAi/bin/Debug/net9.0/Newtonsoft.Json.dll
+/home/bennedistus/Documents/PROJECT/HOPEAI/HopeAi/BE/HopeAi/bin/Debug/net9.0/DotNetEnv.dll
+/home/bennedistus/Documents/PROJECT/HOPEAI/HopeAi/BE/HopeAi/bin/Debug/net9.0/Sprache.dll
